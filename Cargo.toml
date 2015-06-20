@@ -1,0 +1,4 @@
+[package]
+name = "rust-s3"
+version = "0.1.0"
+authors = ["Jared Hance <jaredhance@gmail.com>"]
