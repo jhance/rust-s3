@@ -12,6 +12,7 @@ use chrono::DateTime;
 use chrono::UTC;
 use rustc_serialize::hex::ToHex;
 use hyper::error;
+use std::io::Read;
 use std::io::Write;
 use openssl::crypto::hash;
 use openssl::crypto::hmac;
@@ -80,7 +81,7 @@ impl Connection {
 
     /// Signs an outgoing request a specific region using the
     /// credentials that the connection was created with.
-    pub fn sign(&self, region: &str, request: &mut Request<Fresh>, payload: Option<&str>) {
+    pub fn sign<R: Read>(&self, region: &str, request: &mut Request<Fresh>, payload: Option<&mut R>) {
         let dt = UTC::now();
         let payload_hash = self.payload_hash(payload);
         {
@@ -160,14 +161,13 @@ impl Connection {
                 payload_hash = payload_hash)
     }
 
-    fn payload_hash(&self, payload: Option<&str>) -> String {
-        let input_string = match payload {
-            None => "",
-            Some(s) => s,
+    fn payload_hash<R: Read>(&self, payload: Option<&mut R>) -> String {
+        let mut hash = hash::Hasher::new(hash::Type::SHA256);
+        match payload {
+            None => {}
+            Some(reader) => { ::std::io::copy(reader, &mut hash); }
         };
-        let mut sha256 = Sha256::new();
-        sha256.input_str(input_string);
-        sha256.result_str()
+        hash.finish().to_hex()
     }
 
     fn signed_headers(&self, headers: &Headers) -> String {
@@ -209,11 +209,11 @@ impl Connection {
         hmac::hmac(hash::Type::SHA256, key, val.as_bytes())
     }
 
-    pub fn send(&self, request: Request<Fresh>, payload: Option<&str>) -> Result<Response, error::Error> {
+    pub fn send<R: Read>(&self, request: Request<Fresh>, payload: Option<&mut R>) -> Result<Response, error::Error> {
         let mut srequest = request.start().ok().expect("couldn't stream request");
         match payload {
             None => {},
-            Some(s) => { try!(srequest.write_all(s.as_bytes())); }
+            Some(s) => { try!(::std::io::copy(s, &mut srequest)); }
         }
         srequest.send()
     }

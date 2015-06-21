@@ -1,4 +1,5 @@
 use std::io::Read;
+use std::io::Seek;
 
 use chrono::DateTime;
 use chrono::UTC;
@@ -36,9 +37,9 @@ impl <'a> Bucket<'a> {
         GetObject::new(&self, &path)
     }
 
-    pub fn put(&'a self, path: &str, contents: &'a str) -> PutObject<'a> {
-        PutObject::new(&self, &path, &contents)
-    }
+    //pub fn put<R: Read+Seek>(&'a self, path: &str, source: &'a mut R) -> PutObject<'a, R> {
+    //    PutObject::new(&self, &path, &mut source)
+    //}
 }
 
 pub struct GetObject<'b> {
@@ -93,7 +94,8 @@ impl <'b> GetObject<'b> {
 
     pub fn send(&self) -> Result<hyper::client::Response, Error> {
         let request = try!(self.request());
-        Ok(try!(self.bucket.connection.send(request, None)))
+        let payload: Option<&mut ::std::io::Empty> = None;
+        Ok(try!(self.bucket.connection.send(request, payload)))
     }
 
     pub fn contents(&self) -> Result<String, Error> {
@@ -112,7 +114,8 @@ impl <'b> GetObject<'b> {
         let url = try!(hyper::Url::parse(&self.bucket.object_url(&self.path)));
         let mut request = try!(hyper::client::Request::new(hyper::method::Method::Get, url));
         self.fill_headers(&mut request.headers_mut());
-        self.bucket.connection.sign(&self.bucket.region, &mut request, None);
+        let payload: Option<&mut ::std::io::Empty> = None;
+        self.bucket.connection.sign(&self.bucket.region, &mut request, payload);
         println!("{:?}", request.headers());
         Ok(request)
     }
@@ -141,10 +144,10 @@ impl <'b> GetObject<'b> {
     }
 }
 
-pub struct PutObject<'a> {
+pub struct PutObject<'a, R: Read+Seek+'a> {
     path: String,
-    contents: &'a str,
-    bucket: &'a Bucket<'a>
+    source: &'a mut R,
+    bucket: &'a Bucket<'a>,
 }
 
 /// Since the contents has to be passed as a string, this is not suitable
@@ -153,31 +156,34 @@ pub struct PutObject<'a> {
 ///
 /// If you want more flexibility, you have to use a multipart upload from a
 /// file (which I conveniently have not implemented yet).
-impl <'a> PutObject<'a> {
-    pub fn new(bucket: &'a Bucket<'a>, path: &str, contents: &'a str) -> Self {
+impl <'a, R: Read+Seek> PutObject<'a, R> {
+    pub fn new(bucket: &'a Bucket<'a>, path: &str, source: &'a mut R) -> Self {
         PutObject {
             path: path.to_string(),
-            contents: contents,
+            source: source,
             bucket: bucket,
         }
     }
 
-    pub fn send(&self) -> Result<hyper::client::Response, Error> {
+    pub fn send(mut self) -> Result<hyper::client::Response, Error> {
         let request = try!(self.request());
-        println!("got request");
-        Ok(try!(self.bucket.connection.send(request, Some(self.contents))))
+        Ok(try!(self.bucket.connection.send(request, Some(&mut self.source))))
     }
 
-    pub fn request(&self) -> Result<hyper::client::Request<hyper::net::Fresh>, Error> {
+    pub fn request(&mut self) -> Result<hyper::client::Request<hyper::net::Fresh>, Error> {
         let url = try!(hyper::Url::parse(&self.bucket.object_url(&self.path)));
         let mut request = try!(hyper::client::Request::new(hyper::method::Method::Put, url));
-        self.fill_headers(&mut request.headers_mut());
-        self.bucket.connection.sign(&self.bucket.region, &mut request, Some(self.contents));
+        try!(self.fill_headers(&mut request.headers_mut()));
+        self.bucket.connection.sign(&self.bucket.region, &mut request, Some(&mut self.source));
+        self.source.seek(::std::io::SeekFrom::Start(0));
         println!("{:?}", request.headers());
         Ok(request)
     }
 
-    fn fill_headers(&self, headers: &mut hyper::header::Headers) {
-        headers.set(hyper::header::ContentLength(self.contents.len() as u64));
+    fn fill_headers(&mut self, headers: &mut hyper::header::Headers) -> Result<(), Error> {
+        let len = try!(self.source.seek(::std::io::SeekFrom::End(0)));
+        headers.set(hyper::header::ContentLength(len as u64));
+        self.source.seek(::std::io::SeekFrom::Start(0));
+        Ok(())
     }
 }
