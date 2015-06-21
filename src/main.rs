@@ -1,12 +1,25 @@
+extern crate openssl;
+extern crate rustc_serialize;
+#[macro_use]
+extern crate hyper;
+extern crate crypto;
+extern crate chrono;
+
+use hyper::client::request::Request;
+
+use std::io::Read;
 
 pub mod s3;
 
+header! { (RangeBytes, "Ranges:bytes") => [String] }
+header! { (Date, "Date") => [String] }
+
 fn main() {
-    println!("Hello, world!");
+    let credentials = s3::connection::Credentials::from_env();
+    let connection = s3::connection::Connection::new(credentials);
 
-    let access_key = std::env::var("AWS_ACCESS_KEY").ok().expect("need access key");
-    let secret_key = std::env::var("AWS_SECRET_KEY").ok().expect("need secret key");
-
-    let connection = s3::connection::Connection::new(access_key, secret_key, "http".to_string());
+    let bucket = s3::bucket::Bucket::new(connection, "us-west-2", "test_bucket");
+    let contents = bucket.get("testfile").contents().ok().expect("could not get contents");
+    println!("{}",  contents);
 }
 

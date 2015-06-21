@@ -2,3 +2,10 @@
 name = "rust-s3"
 version = "0.1.0"
 authors = ["Jared Hance <jaredhance@gmail.com>"]
+
+[dependencies]
+chrono = "*"
+hyper = "*"
+rust-crypto = "*"
+openssl = "*"
+rustc-serialize = "*"

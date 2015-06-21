@@ -1,42 +1,88 @@
-#[macro_use]
-extern crate hyper;
-
 use hyper;
+use s3::connection::Connection;
+use std::io::Read;
 
-header! { (Authorization, "Authorization") => [String] }
-
-struct Bucket {
+pub struct Bucket {
     hostname: String,
-    protocol: String,
-    authentication_token: String,
+    connection: Connection,
+    region: String,
 }
 
 impl Bucket {
-    pub fn new(connection: &Connection, region: String, name: String) {
+    pub fn new(connection: Connection, region: &str, name: &str) -> Bucket {
         Bucket {
-            hostname: connection.hostname(region, name),
-            protocol: connection.protocol,
-            authorizer: connection.get_authorizer(),
+            hostname: connection.host(region, name),
+            region: region.to_string(),
+            connection: connection,
         }
     }
 
-    pub fn new_mock(hostname: String, protocol: String, authentication_token: String) {
-        Bucket {
-            hostname: hostname,
-            protocol: protocol,
-            authentication_token,
+    pub fn object_url(&self, path: &str) -> String {
+        format!("{}://{}/{}", self.connection.protocol(), self.hostname, path)
+    }
+
+    pub fn get(self, path: &str) -> GetObject {
+        GetObject::new(self, &path)
+    }
+}
+
+pub struct GetObject {
+    path: String,
+    bucket: Bucket,
+    require_tag: Option<String>,
+    require_not_tag: Option<String>,
+    require_modified_since: Option<String>,
+    require_not_modified_since: Option<String>,
+    byte_range: Option<(i32, i32)>,
+}
+
+pub enum Error {
+    SomeError
+}
+
+impl GetObject {
+    pub fn new(bucket: Bucket, path: &str) -> GetObject {
+        GetObject {
+            path: path.to_string(),
+            bucket: bucket,
+            require_tag: None,
+            require_not_tag: None,
+            require_modified_since: None,
+            require_not_modified_since: None,
+            byte_range: None,
         }
     }
 
-    pub fn object_url(&self, path: String) {
-        format!("{}://{}/{}", self.protocol, self.hostname, self.path)
+    pub fn send(&self) -> Result<hyper::client::Response, hyper::error::Error> {
+        let request = self.request().ok().expect("could not create request to send");
+        self.bucket.connection.send(request, None)
     }
 
-    pub fn get_object_contents(&self, path: String) {
-        let client = hyper::Client::new();
-        let headers = Headers::new();
-        headers.set(Authorization(self.authentication_token))
-        let res = client.get(self.object_url(path))
-                        .send().unwrap();
+    pub fn contents(&self) -> Result<String, Error> {
+        let mut response = self.send().ok().expect("didn't get proper response");
+        if response.status == hyper::status::StatusCode::Ok {
+            let mut buf = String::new();
+            response.read_to_string(&mut buf);
+            Ok(buf)
+        }
+        else {
+            println!("{}", response.status);
+            unreachable!();
+        }
+    }
+
+    pub fn to_file(&self, path: &str) {
+    }
+
+    fn request(&self) -> Result<hyper::client::Request<hyper::net::Fresh>, Error> {
+        let url = hyper::Url::parse(&self.bucket.object_url(&self.path))
+                        .ok().expect("could not parse object url");
+        let mut request = hyper::client::Request::new(hyper::method::Method::Get, url).ok().expect("could not create request");
+        self.fill_headers(&mut request.headers_mut());
+        self.bucket.connection.sign(&self.bucket.region, &mut request, None);
+        Ok(request)
+    }
+
+    fn fill_headers(&self, headers: &mut hyper::header::Headers) {
     }
 }

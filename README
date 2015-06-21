@@ -1,0 +1,5 @@
+This is a WIP, as you can probably tell since theres not even a `lib.rs` yet.
+
+It can download files, but since I started learning rust the same day as making this,
+my knowledge of lifetimes is poor so you can probably only download one object per
+connection (since I believe that the objects consume themselves).
