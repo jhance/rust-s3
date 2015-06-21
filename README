@@ -1,5 +1,6 @@
 This is a WIP but it works fine as long as all you want to do is:
  - get the contents of an object in a bucket
+ - simple uploads/updates of small objects (no multipart)
 
 The authorization api should also be usable outside of the main library
 here. Just call `connection.sign()` on a request and it will add the
