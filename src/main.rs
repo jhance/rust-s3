@@ -13,7 +13,7 @@ fn main() {
 
     let bucket = connection.bucket("us-west-2", &bucket_name);
     let now = UTC::now();
-    match bucket.get(&file).require_modified_since(&now).contents() {
+    match bucket.get(&file).require_not_modified_since(&now).contents() {
         Ok(contents) => { print!("{}", contents); }
         Err(e) => { println!("{:?}", e); }
     }

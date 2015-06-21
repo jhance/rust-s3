@@ -10,7 +10,7 @@ use error::Error;
 header! { (RequireTag, "If-Match") => [String] }
 header! { (RequireNotTag, "If-None-Match") => [String] }
 header! { (RequireModifiedSince, "If-Modified-Since") => [String] }
-header! { (RequireNotModifiedSince, "If-Not-Modified-Since") => [String] }
+header! { (RequireNotModifiedSince, "If-Unmodified-Since") => [String] }
 header! { (ByteRange, "Range:bytes") => [String] }
 
 pub struct Bucket<'a> {
