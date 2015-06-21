@@ -1,5 +1,7 @@
-This is a WIP, as you can probably tell since theres not even a `lib.rs` yet.
+This is a WIP but it works fine as long as all you want to do is:
+ - get the contents of an object in a bucket
 
-It can download files, but since I started learning rust the same day as making this,
-my knowledge of lifetimes is poor so you can probably only download one object per
-connection (since I believe that the objects consume themselves).
+The authorization api should also be usable outside of the main library
+here. Just call `connection.sign()` on a request and it will add the
+authorization header - don't add any more headers after that though or they
+won't be included in the signature!
