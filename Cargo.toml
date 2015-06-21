@@ -6,7 +6,6 @@ authors = ["Jared Hance <jaredhance@gmail.com>"]
 [dependencies]
 chrono = "*"
 hyper = "*"
-getopts = "*"
 rust-crypto = "*"
 openssl = "*"
 rustc-serialize = "*"
