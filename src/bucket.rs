@@ -35,6 +35,10 @@ impl <'a> Bucket<'a> {
     pub fn get(&'a self, path: &str) -> GetObject<'a> {
         GetObject::new(&self, &path)
     }
+
+    pub fn put(&'a self, path: &str, contents: &'a str) -> PutObject<'a> {
+        PutObject::new(&self, &path, &contents)
+    }
 }
 
 pub struct GetObject<'b> {
@@ -137,5 +141,46 @@ impl <'b> GetObject<'b> {
             None => {}
             Some((start, end)) => { headers.set(ByteRange(format!("{}-{}", start, end))); }
         };
+    }
+}
+
+pub struct PutObject<'a> {
+    path: String,
+    contents: &'a str,
+    bucket: &'a Bucket<'a>
+}
+
+/// Since the contents has to be passed as a string, this is not suitable
+/// for large files. We also don't make a copy of the contents string, so
+/// the object must be consumed before the end of the liftime of the contents.
+///
+/// If you want more flexibility, you have to use a multipart upload from a
+/// file (which I conveniently have not implemented yet).
+impl <'a> PutObject<'a> {
+    pub fn new(bucket: &'a Bucket<'a>, path: &str, contents: &'a str) -> Self {
+        PutObject {
+            path: path.to_string(),
+            contents: contents,
+            bucket: bucket,
+        }
+    }
+
+    pub fn send(&self) -> Result<hyper::client::Response, Error> {
+        let request = try!(self.request());
+        println!("got request");
+        Ok(try!(self.bucket.connection.send(request, Some(self.contents))))
+    }
+
+    pub fn request(&self) -> Result<hyper::client::Request<hyper::net::Fresh>, Error> {
+        let url = try!(hyper::Url::parse(&self.bucket.object_url(&self.path)));
+        let mut request = try!(hyper::client::Request::new(hyper::method::Method::Put, url));
+        self.fill_headers(&mut request.headers_mut());
+        self.bucket.connection.sign(&self.bucket.region, &mut request, Some(self.contents));
+        println!("{:?}", request.headers());
+        Ok(request)
+    }
+
+    fn fill_headers(&self, headers: &mut hyper::header::Headers) {
+        headers.set(hyper::header::ContentLength(self.contents.len() as u64));
     }
 }

@@ -213,7 +213,7 @@ impl Connection {
         let mut srequest = request.start().ok().expect("couldn't stream request");
         match payload {
             None => {},
-            Some(s) => { let _ = srequest.write_all(&s.to_string().into_bytes()); }
+            Some(s) => { try!(srequest.write_all(s.as_bytes())); }
         }
         srequest.send()
     }
