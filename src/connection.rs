@@ -47,14 +47,14 @@ impl Credentials {
 }
 
 impl Connection {
-    pub fn new(credentials: Credentials) -> Connection {
+    pub fn new(credentials: Credentials) -> Self {
         Connection {
             credentials: credentials,
             fake: false,
         }
     }
 
-    pub fn new_fake() -> Connection {
+    pub fn new_fake() -> Self {
         Connection {
             credentials: Credentials {
                 access_key: "AKIAIOSFODNN7EXAMPLE".to_string(),

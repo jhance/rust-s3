@@ -19,7 +19,7 @@ pub struct Bucket<'a> {
 }
 
 impl <'a> Bucket<'a> {
-    pub fn new(connection: &'a Connection, region: &str, name: &str) -> Bucket<'a> {
+    pub fn new(connection: &'a Connection, region: &str, name: &str) -> Self {
         Bucket {
             hostname: connection.host(region, name),
             region: region.to_string(),
@@ -47,7 +47,7 @@ pub struct GetObject<'b> {
 }
 
 impl <'b> GetObject<'b> {
-    pub fn new(bucket: &'b Bucket<'b>, path: &str) -> GetObject<'b> {
+    pub fn new(bucket: &'b Bucket<'b>, path: &str) -> Self {
         GetObject {
             path: path.to_string(),
             bucket: &bucket,
