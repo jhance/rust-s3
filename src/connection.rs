@@ -15,6 +15,7 @@ use hyper::error;
 use std::io::Write;
 use openssl::crypto::hash;
 use openssl::crypto::hmac;
+use bucket;
 
 header! { (XAMZHash, "x-amz-content-sha256") => [String] }
 header! { (XAMZDate, "x-amz-date") => [String] }
@@ -31,17 +32,17 @@ pub struct Connection {
 }
 
 impl Credentials {
-    pub fn new(access_key: String, secret_key: String) -> Credentials {
+    pub fn new(access_key: &str, secret_key: &str) -> Self {
         Credentials {
-            access_key: access_key,
-            secret_key: secret_key,
+            access_key: access_key.to_string(),
+            secret_key: secret_key.to_string(),
         }
     }
 
     pub fn from_env() -> Credentials {
         let access_key = env::var("AWS_ACCESS_KEY").ok().expect("need access key");
         let secret_key = env::var("AWS_SECRET_KEY").ok().expect("need secret key");
-        Credentials::new(access_key, secret_key)
+        Credentials::new(&access_key, &secret_key)
     }
 }
 
@@ -63,11 +64,17 @@ impl Connection {
         }
     }
 
+    pub fn bucket<'a>(&'a self, region: &str, name: &str) -> bucket::Bucket<'a> {
+        bucket::Bucket::new(&self, &region, &name)
+    }
+
     pub fn protocol(&self) -> &'static str {
         if self.fake { "http" } else { "https" }
     }
 
     pub fn host(&self, region: &str, bucket_name: &str) -> String {
+        // XXX we should override to localhost:some port here for fake connections
+        // or somehow split fake connections into a trait.
         format!("{}.s3-{}.amazonaws.com", bucket_name, region)
     }
 

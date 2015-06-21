@@ -9,7 +9,7 @@ fn main() {
     let credentials = sss::Credentials::from_env();
     let connection = sss::Connection::new(credentials);
 
-    let bucket = sss::Bucket::new(&connection, "us-west-2", &bucket);
+    let bucket = connection.bucket("us-west-2", &bucket);
     let contents = bucket.get(&file).contents().ok().expect("could not get contents");
     print!("{}",  contents);
 }
