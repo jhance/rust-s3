@@ -4,6 +4,7 @@ version = "0.0.0"
 authors = ["Jared Hance <jaredhance@gmail.com>"]
 
 description = "Client bindings to amazon's s3 api with AWS4 authentication. This is a WIP and isn't useful for much yet, although you can fetch the contents of objects or use the connection API to roll your own requests without dealing with authentication headaches."
+license = "MIT"
 
 [dependencies]
 chrono = "*"
@@ -11,3 +12,4 @@ hyper = "*"
 rust-crypto = "*"
 openssl = "*"
 rustc-serialize = "*"
+url = "*"

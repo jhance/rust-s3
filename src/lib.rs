@@ -4,9 +4,10 @@ extern crate rustc_serialize;
 extern crate hyper;
 extern crate crypto;
 extern crate chrono;
+extern crate url;
 
-pub mod connection;
-pub mod bucket;
+mod connection;
+mod bucket;
 
 pub use self::connection::Connection;
 pub use self::connection::Credentials;
