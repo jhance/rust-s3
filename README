@@ -6,3 +6,10 @@ The authorization api should also be usable outside of the main library
 here. Just call `connection.sign()` on a request and it will add the
 authorization header - don't add any more headers after that though or they
 won't be included in the signature!
+
+Doing simple things is easy! Load your credentials, create a connection, and then
+create a bucket in the region you want with some name. You can then call get/put on
+that and get back http responses (or use get_as_string() to skip this phase).
+
+If you need a more advanced query, create a PutObject/GetObject, which builds the
+query, and then call send() [or contents() for the equivalent of get_as_string()]
