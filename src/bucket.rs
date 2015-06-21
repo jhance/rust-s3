@@ -110,6 +110,7 @@ impl <'b> GetObject<'b> {
         let mut request = try!(hyper::client::Request::new(hyper::method::Method::Get, url));
         self.fill_headers(&mut request.headers_mut());
         self.bucket.connection.sign(&self.bucket.region, &mut request, None);
+        println!("{:?}", request.headers());
         Ok(request)
     }
 
