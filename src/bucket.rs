@@ -70,11 +70,13 @@ impl <'b> GetObject<'b> {
         self
     }
 
+    /// XXX its not specified how to format this header, and this does not work
     pub fn require_modified_since(mut self, dt: &DateTime<UTC>) -> Self {
         self.require_modified_since = Some(dt.format("%Y%m%dT%H%M%SZ").to_string());
         self
     }
 
+    /// XXX its not specified how to format this header, and this does not work
     pub fn require_not_modified_since(mut self, dt: &DateTime<UTC>) -> Self {
         self.require_not_modified_since = Some(dt.format("%Y%m%dT%H%M%SZ").to_string());
         self
