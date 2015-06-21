@@ -21,6 +21,7 @@ pub struct Bucket<'a> {
 }
 
 impl <'a> Bucket<'a> {
+    /// Creates a new bucket. This is equivalent to `Connection.bucket`.
     pub fn new(connection: &'a Connection, region: &str, name: &str) -> Self {
         Bucket {
             hostname: connection.host(region, name),
@@ -29,24 +30,33 @@ impl <'a> Bucket<'a> {
         }
     }
 
-    pub fn object_url(&self, path: &str) -> String {
+    fn object_url(&self, path: &str) -> String {
         format!("{}://{}/{}", self.connection.protocol(), self.hostname, path)
     }
 
+    /// Gets the corresponding response for a bucket get request. Since the response
+    /// implements Read, the resulting data can be read from the object using
+    /// the normal io operations.
     pub fn get(&'a self, path: &str) -> Result<hyper::client::Response, Error> {
         GetObject::new(&self, &path).send()
     }
 
+    /// Gets the contents of a path in the bucket.
     pub fn get_as_string(&'a self, path: &str) -> Result<String, Error> {
         GetObject::new(&self, &path).contents()
     }
 
+    /// Create/update an object in a bucket using the specified source. Because
+    /// we have to hash the entire object using SHA256 before sending it, we
+    /// require `Seek` to be implemented.
     pub fn put<R: Read+Seek>(&self, path: &str, source: &mut R) -> Result<hyper::client::Response, Error> {
         let mut src = source;
         PutObject::new(&self, &path, &mut src).send()
     }
 }
 
+/// Advanced API for getting objects that allows setting optional headers.
+/// Call 'send' or 'contents' after setting all options you wish.
 pub struct GetObject<'b> {
     path: String,
     bucket: &'b Bucket<'b>,
@@ -70,11 +80,16 @@ impl <'b> GetObject<'b> {
         }
     }
 
+    /// Set the required "Etag" of the object. This is usually just the md5sum,
+    /// so you can use this for sanity-checking if you know it ahead of time.
     pub fn require_tag(mut self, tag: &str) -> Self {
         self.require_tag = Some(tag.to_string());
         self
     }
 
+    /// Require that the object not have the specified "etag". This is usually just
+    /// the md5sum so you can use this for syncing small objects (just calculate the
+    /// md5sum and pass that as the not-tag, and the item won't be re-downloaded).
     pub fn require_not_tag(mut self, tag: &str) -> Self {
         self.require_not_tag = Some(tag.to_string());
         self
@@ -92,6 +107,7 @@ impl <'b> GetObject<'b> {
         self
     }
 
+    /// Set the specified byte-range to download.
     pub fn byte_range(mut self, start: i32, end: i32) -> Self {
         self.byte_range = Some((start, end));
         self
@@ -149,18 +165,17 @@ impl <'b> GetObject<'b> {
     }
 }
 
+/// Advanced api for creating/updating objects. Call 'send' after setting all desired options.
+///
+/// This part of the api does *not* support multi-part uploads and this will be a separate
+/// feature (possibly as an option to PutObject f the amazon api is compatible 100%, otherwise
+/// it will probably be PutPart).
 pub struct PutObject<'a, R: Read+Seek+'a> {
     path: String,
     source: &'a mut R,
     bucket: &'a Bucket<'a>,
 }
 
-/// Since the contents has to be passed as a string, this is not suitable
-/// for large files. We also don't make a copy of the contents string, so
-/// the object must be consumed before the end of the liftime of the contents.
-///
-/// If you want more flexibility, you have to use a multipart upload from a
-/// file (which I conveniently have not implemented yet).
 impl <'a, R: Read+Seek> PutObject<'a, R> {
     pub fn new(bucket: &'a Bucket<'a>, path: &str, source: &'a mut R) -> Self {
         PutObject {
@@ -170,12 +185,16 @@ impl <'a, R: Read+Seek> PutObject<'a, R> {
         }
     }
 
+    /// Send the request and get the response.
     pub fn send(mut self) -> Result<hyper::client::Response, Error> {
         let request = try!(self.request());
         Ok(try!(self.bucket.connection.send(request, Some(&mut self.source))))
     }
 
-    pub fn request(&mut self) -> Result<hyper::client::Request<hyper::net::Fresh>, Error> {
+    /// Get the raw request associated with the operation. Seeks the input back to 0.
+    /// This request is signed, but there isn't anything stopping you from re-signing
+    /// the request since this will only overwrite the Authorization header.
+    fn request(&mut self) -> Result<hyper::client::Request<hyper::net::Fresh>, Error> {
         let url = try!(hyper::Url::parse(&self.bucket.object_url(&self.path)));
         let mut request = try!(hyper::client::Request::new(hyper::method::Method::Put, url));
         try!(self.fill_headers(&mut request.headers_mut()));

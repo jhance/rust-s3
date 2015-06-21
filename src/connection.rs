@@ -32,6 +32,9 @@ pub struct Connection {
 }
 
 impl Credentials {
+    /// Create a new connection using a specified access key and secret key.
+    /// Since access/secret keys typically vary per-user of an application,
+    /// they must be input, so using `from_env` may be more convenient.
     pub fn new(access_key: &str, secret_key: &str) -> Self {
         Credentials {
             access_key: access_key.to_string(),
@@ -39,6 +42,8 @@ impl Credentials {
         }
     }
 
+    /// Loads credentials using AWS_SECRET_KEY and AWS_ACCESS_KEY environment
+    /// variables.
     pub fn from_env() -> Credentials {
         let access_key = env::var("AWS_ACCESS_KEY").ok().expect("need access key");
         let secret_key = env::var("AWS_SECRET_KEY").ok().expect("need secret key");
@@ -47,6 +52,7 @@ impl Credentials {
 }
 
 impl Connection {
+    /// Initializes a new connection given credentials to the real Amazon S3 server.
     pub fn new(credentials: Credentials) -> Self {
         Connection {
             credentials: credentials,
@@ -54,6 +60,16 @@ impl Connection {
         }
     }
 
+    /// Initializes a fake connection to localhost using the following credentials.
+    /// This is useful for testing with a mock server such as fakes3, s3-ninja, or
+    /// open cloud software.
+    ///
+    /// ```
+    /// sss::Credentials {
+    ///     access_key: "AKIAIOSFODNN7EXAMPLE".to_string(),
+    ///     secret_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY".to_string(),
+    /// }
+    /// ```
     pub fn new_fake() -> Self {
         Connection {
             credentials: Credentials {
@@ -64,6 +80,9 @@ impl Connection {
         }
     }
 
+    /// Open a bucket. This simply allows you to avoid specifying the bucket region
+    /// and name over and over. The connection object will need to be valid for
+    /// the lifetime of the bucket.
     pub fn bucket<'a>(&'a self, region: &str, name: &str) -> bucket::Bucket<'a> {
         bucket::Bucket::new(&self, &region, &name)
     }
@@ -80,6 +99,8 @@ impl Connection {
 
     /// Signs an outgoing request a specific region using the
     /// credentials that the connection was created with.
+    /// If there is a payload, the payload will be read entirely so it is up to
+    /// the user of this function to seek back to zero before sending.
     pub fn sign<R: Read>(&self, region: &str, request: &mut Request<Fresh>, payload: Option<&mut R>) -> Result<(), ::std::io::Error> {
         let dt = UTC::now();
         let payload_hash = try!(self.payload_hash(payload));
@@ -209,6 +230,8 @@ impl Connection {
         hmac::hmac(hash::Type::SHA256, key, val.as_bytes())
     }
 
+    /// Sends a request using the connection. This is just a wrapper that sends
+    /// a payload using `::std::io::copy`.
     pub fn send<R: Read>(&self, request: Request<Fresh>, payload: Option<&mut R>) -> Result<Response, error::Error> {
         let mut srequest = request.start().ok().expect("couldn't stream request");
         match payload {
