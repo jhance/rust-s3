@@ -10,7 +10,9 @@ fn main() {
     let connection = sss::Connection::new(credentials);
 
     let bucket = connection.bucket("us-west-2", &bucket);
-    let contents = bucket.get(&file).contents().ok().expect("could not get contents");
-    print!("{}",  contents);
+    match bucket.get(&file).contents() {
+        Ok(contents) => { print!("{}", contents); }
+        Err(e) => { println!("{:?}", e); }
+    }
 }
 

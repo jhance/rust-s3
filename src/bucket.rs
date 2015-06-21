@@ -47,6 +47,8 @@ pub struct GetObject<'b> {
     byte_range: Option<(i32, i32)>,
 }
 
+// XXX move this out of this module
+#[derive(Debug)]
 pub enum Error {
     StatusError(hyper::status::StatusCode),
     IoError(io::Error),
