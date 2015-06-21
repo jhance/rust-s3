@@ -1,6 +1,7 @@
 extern crate chrono;
 extern crate sss;
 
+use std::io::Read;
 use std::env;
 use chrono::UTC;
 
@@ -15,12 +16,16 @@ fn main() {
     let bucket = connection.bucket("us-west-2", &bucket_name);
     let now = UTC::now();
     match bucket.put(&file, &contents).send() {
-        Ok(response) => { println!("{:?}", response); }
-        Err(e) => { println!("{:?}", e); }
+        Ok(response) => { println!("PUT OK\n{:?}", response); }
+        Err(e) => { println!("PUT ERR\n{:?}", e); }
     };
-    match bucket.get(&file).contents() {
-        Ok(contents) => { print!("{}\n", contents); }
-        Err(e) => { println!("{:?}", e); }
+    match bucket.get(&file).send() {
+        Ok(mut response) => {
+            println!("GET OK");
+            let mut outfile = std::fs::File::create("output").ok().expect("couldn't open outfile");
+            let _ = std::io::copy(&mut response, &mut outfile);
+        }
+        Err(e) => { println!("GET ERR\n{:?}", e); }
     };
 }
 

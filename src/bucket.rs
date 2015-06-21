@@ -108,9 +108,6 @@ impl <'b> GetObject<'b> {
         }
     }
 
-    pub fn to_file(&self, path: &str) {
-    }
-
     fn request(&self) -> Result<hyper::client::Request<hyper::net::Fresh>, Error> {
         let url = try!(hyper::Url::parse(&self.bucket.object_url(&self.path)));
         let mut request = try!(hyper::client::Request::new(hyper::method::Method::Get, url));
