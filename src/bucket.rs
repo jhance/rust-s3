@@ -1,12 +1,11 @@
-use std::io;
 use std::io::Read;
 
-use hyper;
 use chrono::DateTime;
 use chrono::UTC;
-use url;
+use hyper;
 
 use connection::Connection;
+use error::Error;
 
 header! { (RequireTag, "If-Match") => [String] }
 header! { (RequireNotTag, "If-None-Match") => [String] }
@@ -45,33 +44,6 @@ pub struct GetObject<'b> {
     require_modified_since: Option<String>,
     require_not_modified_since: Option<String>,
     byte_range: Option<(i32, i32)>,
-}
-
-// XXX move this out of this module
-#[derive(Debug)]
-pub enum Error {
-    StatusError(hyper::status::StatusCode),
-    IoError(io::Error),
-    HttpError(hyper::error::Error),
-    ParseError(url::ParseError),
-}
-
-impl From<hyper::error::Error> for Error {
-    fn from(e: hyper::error::Error) -> Self {
-        Error::HttpError(e)
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Error::IoError(e)
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Error::ParseError(e)
-    }
 }
 
 impl <'b> GetObject<'b> {
