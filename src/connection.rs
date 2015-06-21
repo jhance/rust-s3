@@ -13,7 +13,6 @@ use chrono::UTC;
 use rustc_serialize::hex::ToHex;
 use hyper::error;
 use std::io::Read;
-use std::io::Write;
 use openssl::crypto::hash;
 use openssl::crypto::hmac;
 use bucket;
@@ -81,9 +80,9 @@ impl Connection {
 
     /// Signs an outgoing request a specific region using the
     /// credentials that the connection was created with.
-    pub fn sign<R: Read>(&self, region: &str, request: &mut Request<Fresh>, payload: Option<&mut R>) {
+    pub fn sign<R: Read>(&self, region: &str, request: &mut Request<Fresh>, payload: Option<&mut R>) -> Result<(), ::std::io::Error> {
         let dt = UTC::now();
-        let payload_hash = self.payload_hash(payload);
+        let payload_hash = try!(self.payload_hash(payload));
         {
             let mut headers = request.headers_mut();
             headers.set(XAMZHash(payload_hash.to_owned()));
@@ -99,6 +98,7 @@ impl Connection {
             let mut headers = request.headers_mut();
             headers.set(Authorization(auth.to_owned()));
         }
+        Ok(())
     }
 
     fn authorization(&self, credential: &str, signature: &str, headers: &Headers) -> String{
@@ -161,13 +161,13 @@ impl Connection {
                 payload_hash = payload_hash)
     }
 
-    fn payload_hash<R: Read>(&self, payload: Option<&mut R>) -> String {
+    fn payload_hash<R: Read>(&self, payload: Option<&mut R>) -> Result<String, ::std::io::Error> {
         let mut hash = hash::Hasher::new(hash::Type::SHA256);
         match payload {
             None => {}
-            Some(reader) => { ::std::io::copy(reader, &mut hash); }
+            Some(reader) => { try!(::std::io::copy(reader, &mut hash)); }
         };
-        hash.finish().to_hex()
+        Ok(hash.finish().to_hex())
     }
 
     fn signed_headers(&self, headers: &Headers) -> String {

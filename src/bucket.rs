@@ -115,7 +115,7 @@ impl <'b> GetObject<'b> {
         let mut request = try!(hyper::client::Request::new(hyper::method::Method::Get, url));
         self.fill_headers(&mut request.headers_mut());
         let payload: Option<&mut ::std::io::Empty> = None;
-        self.bucket.connection.sign(&self.bucket.region, &mut request, payload);
+        try!(self.bucket.connection.sign(&self.bucket.region, &mut request, payload));
         println!("{:?}", request.headers());
         Ok(request)
     }
@@ -174,8 +174,8 @@ impl <'a, R: Read+Seek> PutObject<'a, R> {
         let url = try!(hyper::Url::parse(&self.bucket.object_url(&self.path)));
         let mut request = try!(hyper::client::Request::new(hyper::method::Method::Put, url));
         try!(self.fill_headers(&mut request.headers_mut()));
-        self.bucket.connection.sign(&self.bucket.region, &mut request, Some(&mut self.source));
-        self.source.seek(::std::io::SeekFrom::Start(0));
+        try!(self.bucket.connection.sign(&self.bucket.region, &mut request, Some(&mut self.source)));
+        try!(self.source.seek(::std::io::SeekFrom::Start(0)));
         println!("{:?}", request.headers());
         Ok(request)
     }
@@ -183,7 +183,7 @@ impl <'a, R: Read+Seek> PutObject<'a, R> {
     fn fill_headers(&mut self, headers: &mut hyper::header::Headers) -> Result<(), Error> {
         let len = try!(self.source.seek(::std::io::SeekFrom::End(0)));
         headers.set(hyper::header::ContentLength(len as u64));
-        self.source.seek(::std::io::SeekFrom::Start(0));
+        try!(self.source.seek(::std::io::SeekFrom::Start(0)));
         Ok(())
     }
 }
