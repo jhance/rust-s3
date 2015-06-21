@@ -11,6 +11,7 @@ header! { (RequireTag, "If-Match") => [String] }
 header! { (RequireNotTag, "If-None-Match") => [String] }
 header! { (RequireModifiedSince, "If-Modified-Since") => [String] }
 header! { (RequireNotModifiedSince, "If-Not-Modified-Since") => [String] }
+header! { (ByteRange, "Range:bytes") => [String] }
 
 pub struct Bucket<'a> {
     hostname: String,
@@ -113,5 +114,25 @@ impl <'b> GetObject<'b> {
     }
 
     fn fill_headers(&self, headers: &mut hyper::header::Headers) {
+        match self.require_tag {
+            None => {}
+            Some(ref tag) => { headers.set(RequireTag(tag.to_string())); }
+        };
+        match self.require_not_tag {
+            None => {}
+            Some(ref tag) => { headers.set(RequireNotTag(tag.to_string())); }
+        };
+        match self.require_modified_since {
+            None => {}
+            Some(ref date) => { headers.set(RequireModifiedSince(date.to_string())); }
+        };
+        match self.require_not_modified_since {
+            None => {}
+            Some(ref date) => { headers.set(RequireNotModifiedSince(date.to_string())); }
+        };
+        match self.byte_range {
+            None => {}
+            Some((start, end)) => { headers.set(ByteRange(format!("{}-{}", start, end))); }
+        };
     }
 }
