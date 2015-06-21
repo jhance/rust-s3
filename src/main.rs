@@ -13,11 +13,11 @@ fn main() {
 
     let bucket = connection.bucket("us-west-2", &bucket_name);
     let mut infile = std::fs::File::open(intarget).ok().expect("couldn't open infile");
-    match sss::PutObject::new(&bucket, &file, &mut infile).send() {
+    match bucket.put(&file, &mut infile) {
         Ok(response) => { println!("PUT OK\n{:?}", response); }
         Err(e) => { println!("PUT ERR\n{:?}", e); }
     };
-    match bucket.get(&file).send() {
+    match bucket.get(&file) {
         Ok(mut response) => {
             println!("GET OK");
             let mut outfile = std::fs::File::create("output").ok().expect("couldn't open outfile");

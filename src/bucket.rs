@@ -33,13 +33,18 @@ impl <'a> Bucket<'a> {
         format!("{}://{}/{}", self.connection.protocol(), self.hostname, path)
     }
 
-    pub fn get(&'a self, path: &str) -> GetObject<'a> {
-        GetObject::new(&self, &path)
+    pub fn get(&'a self, path: &str) -> Result<hyper::client::Response, Error> {
+        GetObject::new(&self, &path).send()
     }
 
-    //pub fn put<R: Read+Seek>(&'a self, path: &str, source: &'a mut R) -> PutObject<'a, R> {
-    //    PutObject::new(&self, &path, &mut source)
-    //}
+    pub fn get_as_string(&'a self, path: &str) -> Result<String, Error> {
+        GetObject::new(&self, &path).contents()
+    }
+
+    pub fn put<R: Read+Seek>(&self, path: &str, source: &mut R) -> Result<hyper::client::Response, Error> {
+        let mut src = source;
+        PutObject::new(&self, &path, &mut src).send()
+    }
 }
 
 pub struct GetObject<'b> {
