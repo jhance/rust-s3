@@ -8,16 +8,13 @@ use std::env;
 use std::ascii::AsciiExt;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use crypto::hmac::Hmac;
-use crypto::mac::Mac;
 use chrono::DateTime;
 use chrono::UTC;
 use rustc_serialize::hex::ToHex;
 use hyper::error;
 use std::io::Write;
-use std::iter::repeat;
 use openssl::crypto::hash;
-use openssl::crypto::hmac::hmac;
+use openssl::crypto::hmac;
 
 header! { (XAMZHash, "x-amz-content-sha256") => [String] }
 header! { (XAMZDate, "x-amz-date") => [String] }
@@ -94,13 +91,6 @@ impl Connection {
             let mut headers = request.headers_mut();
             headers.set(Authorization(auth.to_owned()));
         }
-        println!("{}\n\nSIGNINGSTR\n{}\n\nSIGNINGKEY\n{}\n\nSIG\n{}\n\nCRED\n{}\n\nAUTH\n{}", creq, signing_str, signing_key.to_hex(), signature, credential, auth);
-    }
-
-    pub fn sign_and_send(&self, region: &str, request: Request<Fresh>, payload: Option<&str>) -> Result<Response, error::Error> {
-        let mut r = request;
-        self.sign(region, &mut r, payload);
-        self.send(r, payload)
     }
 
     fn authorization(&self, credential: &str, signature: &str, headers: &Headers) -> String{
@@ -117,7 +107,6 @@ impl Connection {
     fn signing_key(&self, region: &str, dt: &DateTime<UTC>) -> Vec<u8> {
         let key = format!("AWS4{}", self.credentials.secret_key);
         let sk = key.as_bytes();
-        println!("sk = {}", sk.to_hex());
         let dk = self.hmac(&sk, &self.datestamp(&dt));
         let drk = self.hmac(&dk, region);
         let drsk = self.hmac(&drk, "s3");
@@ -210,9 +199,7 @@ impl Connection {
     }
 
     fn hmac(&self, key: &[u8], val: &str) -> Vec<u8> {
-        let res = hmac(hash::Type::SHA256, key, val.as_bytes());
-        println!("hmac = {}", res.to_hex());
-        res
+        hmac::hmac(hash::Type::SHA256, key, val.as_bytes())
     }
 
     pub fn send(&self, request: Request<Fresh>, payload: Option<&str>) -> Result<Response, error::Error> {

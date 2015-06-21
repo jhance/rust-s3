@@ -1,15 +1,15 @@
 use hyper;
-use s3::connection::Connection;
+use connection::Connection;
 use std::io::Read;
 
-pub struct Bucket {
+pub struct Bucket<'a> {
     hostname: String,
-    connection: Connection,
+    connection: &'a Connection,
     region: String,
 }
 
-impl Bucket {
-    pub fn new(connection: Connection, region: &str, name: &str) -> Bucket {
+impl <'a> Bucket<'a> {
+    pub fn new(connection: &'a Connection, region: &str, name: &str) -> Bucket<'a> {
         Bucket {
             hostname: connection.host(region, name),
             region: region.to_string(),
@@ -21,14 +21,14 @@ impl Bucket {
         format!("{}://{}/{}", self.connection.protocol(), self.hostname, path)
     }
 
-    pub fn get(self, path: &str) -> GetObject {
-        GetObject::new(self, &path)
+    pub fn get(&'a self, path: &str) -> GetObject<'a> {
+        GetObject::new(&self, &path)
     }
 }
 
-pub struct GetObject {
+pub struct GetObject<'b> {
     path: String,
-    bucket: Bucket,
+    bucket: &'b Bucket<'b>,
     require_tag: Option<String>,
     require_not_tag: Option<String>,
     require_modified_since: Option<String>,
@@ -40,11 +40,11 @@ pub enum Error {
     SomeError
 }
 
-impl GetObject {
-    pub fn new(bucket: Bucket, path: &str) -> GetObject {
+impl <'b> GetObject<'b> {
+    pub fn new(bucket: &'b Bucket<'b>, path: &str) -> GetObject<'b> {
         GetObject {
             path: path.to_string(),
-            bucket: bucket,
+            bucket: &bucket,
             require_tag: None,
             require_not_tag: None,
             require_modified_since: None,

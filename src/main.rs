@@ -1,25 +1,16 @@
-extern crate openssl;
-extern crate rustc_serialize;
-#[macro_use]
-extern crate hyper;
-extern crate crypto;
-extern crate chrono;
+extern crate sss;
 
-use hyper::client::request::Request;
-
-use std::io::Read;
-
-pub mod s3;
-
-header! { (RangeBytes, "Ranges:bytes") => [String] }
-header! { (Date, "Date") => [String] }
+use std::env;
 
 fn main() {
-    let credentials = s3::connection::Credentials::from_env();
-    let connection = s3::connection::Connection::new(credentials);
+    let args: Vec<String> = env::args().collect();
+    let bucket = args.get(1).expect("need bucket");
+    let file = args.get(2).expect("need file");
+    let credentials = sss::Credentials::from_env();
+    let connection = sss::Connection::new(credentials);
 
-    let bucket = s3::bucket::Bucket::new(connection, "us-west-2", "test_bucket");
-    let contents = bucket.get("testfile").contents().ok().expect("could not get contents");
-    println!("{}",  contents);
+    let bucket = sss::Bucket::new(&connection, "us-west-2", &bucket);
+    let contents = bucket.get(&file).contents().ok().expect("could not get contents");
+    print!("{}",  contents);
 }
 

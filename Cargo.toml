@@ -1,11 +1,12 @@
 [package]
-name = "rust-s3"
-version = "0.1.0"
+name = "sss"
+version = "0.0.0"
 authors = ["Jared Hance <jaredhance@gmail.com>"]
 
 [dependencies]
 chrono = "*"
 hyper = "*"
+getopts = "*"
 rust-crypto = "*"
 openssl = "*"
 rustc-serialize = "*"
